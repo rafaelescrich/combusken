@@ -309,6 +309,14 @@ func (t *thread) alphaBeta(depth, alpha, beta, height int, inCheck bool) int {
 		_, _, _, hashMove, _ = transposition.GlobalTransTable.Get(pos.Key)
 	}
 
+	marked, owning := false, false
+	if t.engine.Threads.Val > 1 {
+		marked, owning = markPosition(t, pos.Key, height)
+		if owning {
+			defer unmarkPosition(pos.Key)
+		}
+	}
+
 	// Quiet moves are stored in order to reduce their history value at the end of search
 	quietsSearched := t.stack[height].quietsSearched[:0]
 	bestMove := NullMove
@@ -367,6 +375,9 @@ func (t *thread) alphaBeta(depth, alpha, beta, height int, inCheck bool) int {
 
 			// Increase reduction if not improving
 			reduction += BoolToInt(height <= 2 || t.stack[height].Evaluation() < t.stack[height-2].Evaluation())
+
+			reduction += BoolToInt(marked)
+
 			reduction = Max(0, Min(depth-2, reduction))
 		}
 
